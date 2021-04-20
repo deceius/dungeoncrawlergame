@@ -1,0 +1,9 @@
+@font-face {
+    font-family: GameFont;
+    src: url("emulogic.ttf");
+    image-rendering: pixelated;
+    font-smooth: none 0px !important;
+}
+CANVAS{
+  image-rendering: pixelated;
+}
