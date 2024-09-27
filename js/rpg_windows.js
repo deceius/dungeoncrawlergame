@@ -571,14 +571,14 @@ Window_Base.prototype.drawActorMp = function(actor, x, y, width) {
 };
 
 Window_Base.prototype.drawActorTp = function(actor, x, y, width) {
-    // width = width || 96;
-    // var color1 = this.tpGaugeColor1();
-    // var color2 = this.tpGaugeColor2();
-    // this.drawGauge(x, y, width, actor.tpRate(), color1, color2);
-    // this.changeTextColor(this.systemColor());
-    // this.drawText(TextManager.tpA, x, y, 44);
-    // this.changeTextColor(this.tpColor(actor));
-    // this.drawText(actor.tp, x + width - 64, y, 64, 'right');
+    width = width || 96;
+    var color1 = this.tpGaugeColor1();
+    var color2 = this.tpGaugeColor2();
+    this.drawGauge(x, y, width, actor.tpRate(), color1, color2);
+    this.changeTextColor(this.systemColor());
+    this.drawText(TextManager.tpA, x, y, 44);
+    this.changeTextColor(this.tpColor(actor));
+    this.drawText(actor.tp, x + width - 64, y, 64, 'right');
 };
 
 Window_Base.prototype.drawActorSimpleStatus = function(actor, x, y, width) {
@@ -1480,7 +1480,7 @@ Window_Help.prototype.constructor = Window_Help;
 
 Window_Help.prototype.initialize = function(numLines) {
     var width = Graphics.boxWidth;
-    var height = this.fittingHeight(numLines || 1);
+    var height = this.fittingHeight(numLines || 1) ;
     Window_Base.prototype.initialize.call(this, 0, 0, width, height);
     this._text = '';
 };
@@ -1875,7 +1875,7 @@ Window_ItemCategory.prototype.windowWidth = function() {
 };
 
 Window_ItemCategory.prototype.maxCols = function() {
-    return 2;
+    return 4;
 };
 
 Window_ItemCategory.prototype.update = function() {
@@ -1886,9 +1886,9 @@ Window_ItemCategory.prototype.update = function() {
 };
 
 Window_ItemCategory.prototype.makeCommandList = function() {
-    this.addCommand("Consumables",    'item');
-  //  this.addCommand(TextManager.weapon,  'weapon');
-  //  this.addCommand(TextManager.armor,   'armor');
+    this.addCommand(TextManager.item,    'item');
+   this.addCommand(TextManager.weapon,  'weapon');
+   this.addCommand(TextManager.armor,   'armor');
     this.addCommand(TextManager.keyItem, 'keyItem');
 };
 
@@ -4658,14 +4658,17 @@ Window_MapName.prototype = Object.create(Window_Base.prototype);
 Window_MapName.prototype.constructor = Window_MapName;
 
 Window_MapName.prototype.initialize = function() {
-    var wight = this.windowWidth();
+    var width = this.windowWidth();
     var height = this.windowHeight();
-    Window_Base.prototype.initialize.call(this, 0, 0, wight, height);
+    
+    var nameWidth = this.windowWidth();
+    var nameHeight = this.lineHeight();
+    Window_Base.prototype.initialize.call(this, (1066 / 2) - (360 / 2), (576 / 3) - (nameHeight / 2), width, height);
     this.opacity = 0;
     this.contentsOpacity = 0;
     this._showCount = 0;
     this.refresh();
-};
+  };
 
 Window_MapName.prototype.windowWidth = function() {
     return 360;
@@ -6020,50 +6023,47 @@ Window_DebugEdit.prototype.updateVariable = function() {
 };
 
 //-----------------------------------------------------------------------------
-// Window_MenuGold
+// Window_Gold
 //
 // The window for displaying the party's gold.
-
-function Window_MenuGold() {
+function Window_Gold() {
     this.initialize.apply(this, arguments);
 }
 
-Window_MenuGold.prototype = Object.create(Window_Base.prototype);
-Window_MenuGold.prototype.constructor = Window_MenuGold;
+Window_Gold.prototype = Object.create(Window_Base.prototype);
+Window_Gold.prototype.constructor = Window_Gold;
 
-Window_MenuGold.prototype.initialize = function(x, y) {
+Window_Gold.prototype.initialize = function(x, y) {
     var width = this.windowWidth();
     var height = this.windowHeight();
     Window_Base.prototype.initialize.call(this, x, y, width, height);
     this.refresh();
 };
 
-Window_MenuGold.prototype.windowWidth = function() {
+Window_Gold.prototype.windowWidth = function() {
     return 240;
 };
 
-Window_MenuGold.prototype.windowHeight = function() {
-    return this.fittingHeight(3) + 6;
+Window_Gold.prototype.windowHeight = function() {
+    return this.fittingHeight(1);
 };
 
-Window_MenuGold.prototype.refresh = function() {
+Window_Gold.prototype.refresh = function() {
     var x = this.textPadding();
     var width = this.contents.width - this.textPadding() * 2;
     this.contents.clear();
-    this.drawTextWithIcon(this.value(), this.currencyUnit(), x, 5, width, 212);
-    this.drawTextWithIcon($gameVariables.value(6), this.currencyUnit(), x, 40, width, 85);
-    this.drawTextWithIcon($gameVariables.value(5), this.currencyUnit(), x, 75, width, 1);
+    this.drawCurrencyValue(this.value(), this.currencyUnit(), x, 0, width);
 };
 
-Window_MenuGold.prototype.value = function() {
+Window_Gold.prototype.value = function() {
     return $gameParty.gold();
 };
 
-Window_MenuGold.prototype.currencyUnit = function() {
+Window_Gold.prototype.currencyUnit = function() {
     return TextManager.currencyUnit;
 };
 
-Window_MenuGold.prototype.open = function() {
+Window_Gold.prototype.open = function() {
     this.refresh();
     Window_Base.prototype.open.call(this);
 };

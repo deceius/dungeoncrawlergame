@@ -854,7 +854,7 @@ DataManager.loadMapDataTool = function() {
 // * Ras
 //==============================
 ImageManager.loadRas = function(filename) {
-  return this.loadBitmap("img/chrono/", filename, 0, true);
+  return this.loadBitmap("img/chrono/", filename, 0, false);
 };
 
 //==============================
@@ -1143,6 +1143,7 @@ Game_Battler.prototype.toolSysInitBattler = function() {
   this._ras.superGuard = false;
   this._ras.moveSpeed = 4;
   this._ras.diagonal = [false, 0];
+  this._ras.knockbackDefense = 0;
   this._ras.deadSwitchID = [];
   this._ras.deadVariableID = [];
   this._ras.deadSelfSwitchID = [];
@@ -1295,6 +1296,9 @@ Game_Battler.prototype.loadToolSysNotes = function() {
     if (note_data[0].toLowerCase() == "dead switch id") {
       this._ras.deadSwitchID.push(Number(note_data[1]));
     }
+    if (note_data[0].toLowerCase() == "knockback defense") {
+      this._ras.knockbackDefense = Number(note_data[1]);
+    }
     if (note_data[0].toLowerCase() == "dead variable id") {
       this._ras.deadVariableID.push(Number(note_data[1]));
     }
@@ -1371,8 +1375,13 @@ Game_Actor.prototype.initMembers = function() {
   this._toolSkillActionId = 0;
   this._toolWeaponActionId = 0;
   this._toolShieldActionId = 0;
+  this._equipToolItemIds = [];
+  this._equipToolSkillIds = [];
 };
 
+Game_Actor.prototype.maxToolSlots = function () {
+  return 3;
+}
 //==============================
 // * tool Item ID
 //==============================
@@ -1416,6 +1425,22 @@ Game_Actor.prototype.equipToolSkillID = function(itemid) {
   this._toolSkillId = itemid;
   this.setToolSkillID();
 };
+
+Game_Actor.prototype.addToolSkillID = function(itemid) {
+  this._equipToolSkillIds = this.pushIfNotExists(itemid, this._equipToolSkillIds);
+};
+
+Game_Actor.prototype.pushIfNotExists = function(itemId, array) {
+  if (!array.includes(itemId)) {
+    array.push(itemId);
+  } else {
+    array = array.filter(x => itemId != x)
+  }
+  if (array.length > this.maxToolSlots()) {
+    array.shift();
+  }
+  return array;
+}
 
 //==============================
 // * set Tool Item ID
@@ -2678,9 +2703,17 @@ Game_CharacterBase.prototype.canKnockback = function(target) {
   if (target.battler()._ras.poseDuration > 25) {
     return false;
   }
+
   if (!target.battler()._ras._knockback) {
     return false;
+  } else {
+    if (target.battler()._ras.knockbackDefense > this._tool.knockbackPower) {
+      return false;
+    }
   }
+
+  
+
   if (!$gameSystem.isChronoMode()) {
     if (target.battler().isActor()) {
       if (target.battler().isDead()) {
@@ -3437,6 +3470,7 @@ Game_Player.prototype.initMembers = function() {
 // * Start Map Event
 //==============================
 Game_Player.prototype.startMapEvent = function(x, y, triggers, normal) {
+  
   if ($gameSystem.isChronoMode()) {
     return;
   }
@@ -3551,8 +3585,18 @@ Game_Player.prototype.commandToolMenuItem = function() {
 //==============================
 Game_Player.prototype.commandToolMenuSkill = function() {
   SoundManager.playOk();
-  SceneManager.snapForBackground();
-  SceneManager.push(Scene_ToolSkill);
+  // SceneManager.snapForBackground();
+  // SceneManager.push(Scene_ToolSkill);
+  let actor = $gameParty.leader();
+  let actorEqSkills = actor._equipToolSkillIds;
+  let actorSkillIndex = actorEqSkills.indexOf(actor._toolSkillId);
+  var skillId = 0;
+  if (actorSkillIndex == actorEqSkills.length - 1) {
+    skillId = actorEqSkills[0];
+  } else {
+    skillId = actorEqSkills[actorSkillIndex + 1];
+  }
+  actor.equipToolSkillID(skillId);
 };
 
 //==============================
@@ -7496,7 +7540,7 @@ ToolEvent.prototype.setInverseDirection = function(direction) {
 //==============================
 ToolEvent.prototype.collisionGuard = function(char, battler) {
   char.battler()._ras.collisionD = this._tool.collisionD;
-  $gameTemp.reserveCommonEvent(11);
+  $gameTemp.reserveCommonEvent(10);
   if (this._tool.guardReflect) {
     this.executeGuardReflection(char, battler);
   } else {
@@ -8266,7 +8310,7 @@ ToolEvent.prototype.setKnockbackDuration = function(target, battler) {
 ToolEvent.prototype.setKnockbackDirection = function(target, battler) {
   var preD = target.direction();
   if (this._tool.hookshot.enabled && $gameSystem.isAbsMode()) {
-    //this.knockbackHookshot(target,battler)
+    // this.knockbackHookshot(target,battler)
   } else {
     if (this._tool.knockbackFace) {
       this.turnTowardTool(target);
@@ -8871,7 +8915,7 @@ Hookshotchain.prototype.initialize = function() {
 //==============================
 Hookshotchain.prototype.createChain = function() {
   this._chain = [];
-  for (var i = 0; i < 12; i++) {
+  for (var i = 0; i < 15; i++) {
     this._chain[i] = new Sprite(this._img);
     this._chain[i].index = i;
     this._chain[i].anchor.x = 0.5;
@@ -8902,7 +8946,7 @@ Hookshotchain.prototype.updateChain = function(sprite) {
   sprite.x = user.screenX() + dx * sprite.index + fx;
   sprite.y = user.screenY() + dy * sprite.index + fy;
   sprite.z = user.screenZ() - 9999;
-  this.z = user.screenZ() + 1;
+  this.z =  user.direction() === 8 ? user.screenZ() - 1 : user.screenZ() + 1;
 };
 
 //==============================
@@ -9153,7 +9197,7 @@ Game_Character.prototype.needMoveFowardDiagonal = function() {
   if (!this._user.diagonal[0]) {
     return false;
   }
-  return false;
+  return true;
 };
 
 //==============================
@@ -10267,7 +10311,7 @@ Window_ToolSkill.prototype.setActor = function(actor) {
 // * max Cols
 //==============================
 Window_ToolSkill.prototype.maxCols = function() {
-  return 2;
+  return 1;
 };
 
 //==============================
@@ -10361,8 +10405,24 @@ Window_ToolSkill.prototype.drawItem = function(index) {
     var numberWidth = this.numberWidth();
     var rect = this.itemRect(index);
     rect.width -= this.textPadding();
+    if (this._actor._equipToolSkillIds.includes(item.id)) {
+      this.changeTextColor(this.crisisColor());
+    } else {
+      this.resetTextColor();
+    }
+    
     this.drawItemName(item, rect.x, rect.y, rect.width - numberWidth);
     this.drawItemNumber(item, rect.x, rect.y, rect.width);
+
+  }
+};
+
+Window_ToolSkill.prototype.drawItemName = function(item, x, y, width) {
+  width = width || 312;
+  if (item) {
+      var iconBoxWidth = Window_Base._iconWidth + 4;
+      this.drawIcon(item.iconIndex, x + 2, y + 2);
+      this.drawText(item.name, x + iconBoxWidth, y, width - iconBoxWidth);
   }
 };
 
@@ -10413,7 +10473,73 @@ Window_ToolSkill.prototype.setToolID = function() {
   var toolID = this._toolID[this._index];
   if (toolID && this._actor) {
     this._actor.equipToolSkillID(this.item().id);
+    this._actor.addToolSkillID(this.item().id);
   }
+};
+
+function Window_EquippedIcons() {
+  this.initialize.apply(this, arguments);
+}
+
+Window_EquippedIcons.prototype = Object.create(Window_Base.prototype);
+Window_EquippedIcons.prototype.constructor = Window_EquippedIcons;
+
+Window_EquippedIcons.prototype.initialize = function(x, y, equipTitle = "Equip Slots") {
+  x = Graphics.boxWidth / 2;
+  var width = this.windowWidth();
+  var height = this.windowHeight();
+  this._equippedItems = [];
+  this._equipTitle = equipTitle;
+  Window_Base.prototype.initialize.call(this, x, y, width, height);
+  this.refresh();
+};
+
+Window_EquippedIcons.prototype.windowWidth = function() {
+    return Graphics.boxWidth / 2;
+};
+
+Window_EquippedIcons.prototype.updateEquipped = function (itemIds, data) {
+  this._equippedItems = [];
+  itemIds.forEach((element) => this._equippedItems.push(data[element]));
+  this.refresh();
+}
+
+Window_EquippedIcons.prototype.windowHeight = function() {
+    return this.fittingHeight(4);
+};
+
+Window_EquippedIcons.prototype.refresh = function() {
+    this.contents.clear();
+    var x = this.textPadding();
+    var y = 0;
+    var width = this.contents.width - this.textPadding() * 2;
+    this.changeTextColor(this.systemColor());
+    this.drawText(this._equipTitle, x, y, width, 'left');
+    y = y + 35;
+    this.resetTextColor();
+    this._equippedItems.forEach((item) => {
+      this.drawTextWithIcon(item.name, x, y, width, item.iconIndex);
+      y = y + 35;
+    });
+    var empty = 3 - this._equippedItems.length;
+    for(let i = 0; i < empty; i++){
+      this.drawTextWithIcon("---", x, y, width, 0);
+      y = y + 35;
+  }
+};
+
+Window_EquippedIcons.prototype.drawTextWithIcon = function(value, wx, wy, ww, icon) {
+    this.resetTextColor();
+    var cx = Window_Base._iconWidth;
+    var text = Yanfly.Util.toGroup(value);
+    this.drawIcon(icon, wx , wy + 2);
+    this.drawText(text, wx + cx + 4, wy, ww - cx - 4 , 'left');
+    this.resetFontSettings();
+};
+
+Window_EquippedIcons.prototype.open = function() {
+  this.refresh();
+  Window_Base.prototype.open.call(this);
 };
 
 //=============================================================================
@@ -10433,9 +10559,18 @@ Scene_ToolSkill.prototype.initialize = function() {
   Scene_Base.prototype.initialize.call(this);
   this.createBackground();
   this.createHelpWindow();
+  this.createEquippedIcons();
   this.createWindowList();
+  let itemIds = this._windowList._actor._equipToolSkillIds;
+  this._equippedIcons.updateEquipped(itemIds, $dataSkills);
 };
 
+Scene_ToolSkill.prototype.createEquippedIcons = function () {
+  this._equippedIcons = new Window_EquippedIcons(0, 0, "Skill Slots");
+  this._equippedIcons.y = this._helpWindow.height;
+  this._equippedIcons.height = Graphics.boxHeight - this._helpWindow.height;
+  this.addChild(this._equippedIcons);
+}
 //==============================
 // * create Background
 //==============================
@@ -10457,8 +10592,8 @@ Scene_ToolSkill.prototype.createHelpWindow = function() {
 // * create Window List
 //==============================
 Scene_ToolSkill.prototype.createWindowList = function() {
-  var w = Graphics.boxWidth;
-  var h = Graphics.boxHeight - this._helpWindow.height;
+  var w = Graphics.boxWidth / 2;
+  var h = Graphics.boxHeight - (this._helpWindow.height);
   var x = 0;
   var y = this._helpWindow.height;
   this._windowList = new Window_ToolSkill(x, y, w, h);
@@ -10476,7 +10611,10 @@ Scene_ToolSkill.prototype.createWindowList = function() {
 Scene_ToolSkill.prototype.equipTool = function() {
   SoundManager.playEquip();
   this._windowList.setToolID();
-  SceneManager.pop();
+  this._windowList.refresh();
+  let itemIds = this._windowList._actor._equipToolSkillIds;
+  this._equippedIcons.updateEquipped(itemIds, $dataSkills);
+  this._windowList.activate();
 };
 
 //=============================================================================
@@ -13060,8 +13198,8 @@ Sprite_Character.prototype.updateSpriteCharacterCN = function() {
 Sprite_Character.prototype.updateBattler = function() {
   if (!this._character._tool.active) {
     this.updateDamagePopup();
-    if (!this._stateIconSprite) {
-      this.createStateIconSprite();
+    if (!this._stateSprite) {
+      this.createStateIconSprite(this.battler());
     } else {
       this.updateStateSprite();
     }
@@ -13095,10 +13233,11 @@ Sprite_Character.prototype.updateBattler = function() {
 //==============================
 // * Create State Icon Sprite
 //==============================
-Sprite_Character.prototype.createStateIconSprite = function() {
-  this._stateIconSprite = new Sprite_StateIcon();
-  this._stateIconSprite.setup(this.battler());
-  this.addChild(this._stateIconSprite);
+Sprite_Character.prototype.createStateIconSprite = function(battler) {
+  this._stateSprite = new Sprite_StateOverlay();
+  this._stateSprite.setup(battler);
+  this._stateSprite.anchor.y = 0;
+  this.addChild(this._stateSprite);
 };
 
 //==============================
@@ -13106,17 +13245,31 @@ Sprite_Character.prototype.createStateIconSprite = function() {
 //==============================
 Sprite_Character.prototype.updateStateSprite = function() {
   if (this._character.battler() && this._character.battler()._ras.iconStateY != 0) {
-    this._stateIconSprite.y = -this._character.battler()._ras.iconStateY;
+    this._stateSprite.y = -this._character.battler()._ras.iconStateY;
     if (Imported.MOG_CharPoses) {
-      this._stateIconSprite.y -= this._character._frames.y;
+      this._stateSprite.y -= this._character._frames.y;
     }
   } else {
     var ph = this._isBigCharacter ? 4 : 8;
-    this._stateIconSprite.y = -Math.floor(this.bitmap.height / ph) - 24;
+    this._stateSprite.y = -Math.floor(this.bitmap.height / ph) - 24;
     if (Imported.MOG_CharPoses) {
-      this._stateIconSprite.y += this._character._frames.y;
+      this._stateSprite.y += this._character._frames.y;
     }
   }
+  
+  this._stateSprite.update();
+};
+
+Sprite_StateOverlay.prototype.updateFrame = function() {
+    if (this._overlayIndex > 0) {
+        var w = 96;
+        var h = 96;
+        var sx = this._pattern * w;
+        var sy = (this._overlayIndex - 1) * h;
+        this.setFrame(sx, sy, w, h);
+    } else {
+        this.setFrame(0, 0, 0, 0);
+    }
 };
 
 //==============================
@@ -13221,7 +13374,7 @@ Sprite_Character.prototype.updateDamagePopup = function() {
     for (var i = 0; i < this._damages.length; i++) {
       this._damages[i].update();
       this._damages[i].x = this.x;
-      this._damages[i].y = this.y - 16;
+      this._damages[i].y = (this.y - 16) - this._character._frames.y ;
     }
     if (!this._damages[0].isPlaying()) {
       this.parent.removeChild(this._damages[0]);
@@ -13237,7 +13390,7 @@ Sprite_Character.prototype.setupDamagePopup = function() {
   if (this.battler().isDamagePopupRequested()) {
     var sprite = new Sprite_Damage();
     sprite.x = this.x;
-    sprite.y = this.y;
+    sprite.y = this.y - this._character._frames.y;
     sprite.z = 500;
     sprite.setup(this.battler());
     this._damages.push(sprite);

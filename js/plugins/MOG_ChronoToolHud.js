@@ -367,6 +367,7 @@ ToolHud.prototype.textColor = function(n) {
 // * refresh Cost ITem
 //==============================
 ToolHud.prototype.refreshCostItem = function() {
+	return;
 	if (this._costItem.item) {
 		this._costItem.itemNumber = $gameParty.numItems(this._costItem.item);
 		var number = this._costItem.itemNumber

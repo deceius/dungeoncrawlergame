@@ -257,6 +257,7 @@ Game_Party.prototype.removeActor = function(actorId) {
 // ** Game Actor
 //=============================================================================
 
+
 //==============================
 // * set Character Image
 //==============================
@@ -464,7 +465,7 @@ Game_CharacterBase.prototype.isDashingPose = function() {
   if (!this.isMoving()) {
     return false;
   }
-  return this.isDashing();
+  return this.isMoving();
 };
 
 //==============================
@@ -846,6 +847,7 @@ Game_CharacterBase.prototype.setPose = function() {
   if (this.isDiagonalDefaultPose()) {
     return this.setDiagonalDefaultPose();
   } else {
+    this._stepAnime = false;
     return this._originalName.name;
   }
 };
@@ -1157,16 +1159,19 @@ Game_CharacterBase.prototype.updateAnimation = function() {
   this.updateAnimationCount();
   if (this._animationCount >= this.animationWait()) {
     if (this.isGuardPose() || this.isKnockbackPose()) {
-      if (this._pattern === 0) $gameTemp.reserveCommonEvent(10);
-
+      if (this._pattern === 0 && this.isGuardPose()) {
+        $gamePlayer.requestAnimation(12); 
+      }
       if (this._pattern != this.maxPattern() - 1) {
         this.updatePattern();
       }
-      this._animationCount = 0;
+      
     } else {
       this.updatePattern();
-      this._animationCount = 0;
     }
+
+    
+    this._animationCount = 0;
   }
 };
 
@@ -1360,3 +1365,27 @@ Sprite_Animation.prototype.updateCharPosesPositionAnimation = function(character
   this.x += ex;
   this.y += ey;
 };
+
+
+Sprite_Animation.prototype.updatePosition = function() {
+  if (this._animation.position === 3) {
+      this.x = this.parent.width / 2;
+      this.y = this.parent.height / 2;
+  } else {
+      var parent = this._target.parent;
+      var grandparent = parent ? parent.parent : null;
+      this.x = this._target.x;
+      this.y = this._target.y;
+      if (this.parent === grandparent) {
+          this.x += parent.x;
+          this.y += parent.y;
+      }
+      if (this._animation.position === 0) {
+          this.y -= this._target.height;
+      } else if (this._animation.position === 1) {
+        this.y = this._target.y + this._target._character._frames.y;
+          this.y -= this._target.height / 2;
+      }
+  }
+};
+

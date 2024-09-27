@@ -20177,7 +20177,7 @@ exports.default = {
    * @type {number}
    * @default 3600
    */
-  GC_MAX_IDLE: 60 * 60,
+  GC_MAX_IDLE: 3600,
 
   /**
    * Default Garbage Collection maximum check count.
@@ -20187,7 +20187,7 @@ exports.default = {
    * @type {number}
    * @default 600
    */
-  GC_MAX_CHECK_COUNT: 60 * 10,
+  GC_MAX_CHECK_COUNT: 1200,
 
   /**
    * Default wrap modes that are supported by pixi.
